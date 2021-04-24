@@ -1,4 +1,4 @@
-import math
+from math import *
 import datetime
 IN_SMS_PRICE = 0
 IN_HOME_CALL_PRICE = 0
@@ -9,44 +9,36 @@ OUT_HOME_CALL_PRICE_PER_MINUTE = 2
 OUT_ROAMING_CALL_PRICE_PER_MINUTE = 20
 OUT_CALL_NO_TARIFF_SEC = 3
 HOME_MB_PRICE = 0.2
+MAX_MESSAGE_LENGTH = 70
 ROAMING_MB_PRICE = 5
-CEILING = True
 PATH = "events.txt"
-
 
 class Emulator():
     def __init__(self):
         self.balance = 0
-
         self.h_web_mb = 0
         self.h_web_spent = 0
         self.r_web_mb = 0
         self.r_web_spent = 0
-
         self.hr_vmessage_counter = 0
         self.hr_vmessage_spent = 0
         self.h_imessage_counter = 0
         self.h_imessage_spent = 0
         self.r_imessage_counter = 0
         self.r_imessage_spent = 0
-
-        self.h_vcalls_money = 0
+        self.h_vcalls_spent = 0
         self.h_vcalls_duration = 0
         self.h_vcalls_counter = 0
-        self.h_icalls_money = 0
+        self.h_icalls_spent = 0
         self.h_icalls_duration = 0
         self.h_icalls_counter = 0
-
         self.r_vcalls_spent = 0
         self.r_vcalls_duration = 0
         self.r_vcalls_counter = 0
         self.r_icalls_spent = 0
         self.r_icalls_duration = 0
         self.r_icalls_counter = 0
-
         self.roaming = False
-
-    # args = dict().
 
     def enter_roaming(self, args):
         print("roaming true")
@@ -61,7 +53,9 @@ class Emulator():
         self.balance += args['value']
 
     def internet_session(self, args):
-        global HOME_MB_PRICE, ROAMING_MB_PRICE
+        global HOME_MB_PRICE
+        global ROAMING_MB_PRICE
+        print(args['mb'])
         if self.roaming:
             self.r_web_mb += args['mb']
             self.r_web_spent += ROAMING_MB_PRICE * args['mb']
@@ -69,24 +63,55 @@ class Emulator():
             self.home_internet_value += args['mb']
             self.home_internet_money += HOME_MB_PRICE * args['mb']
 
-
-    def incoming_call(self, args):
-        pass
-
-    def outgoing_call(self, args):
-        pass
-
     def incoming_message(self, args):
-        pass
+        self.hr_vmessage_counter += 1
+        self.hr_vmessage_spent += 0
 
     def outgoing_message(self, args):
-        pass
+        global MAX_MESSAGE_LENGTH
+        global OUT_HOME_SMS_PRICE_PER_70
+        global OUT_ROAMING_SMS_PRICE_PER_70
+        print(args['message'])
+        if self.roaming:
+            self.r_imessage_counter += 1
+            self.r_imessage_spent += ceil(len(args['message']) / MAX_MESSAGE_LENGTH) * OUT_ROAMING_SMS_PRICE_PER_70
+        else:
+            self.h_imessage_spent += ceil(len(args['message']) / MAX_MESSAGE_LENGTH) * OUT_HOME_SMS_PRICE_PER_70
+            self.h_imessage_counter += 1
+
+    def incoming_call(self, args):
+        global R_INC_CALL
+        print(args['duration'])
+        if self.roaming:
+            self.r_vcalls_counter += 1
+            self.r_vcalls_duration += ceil(args['duration'] / 60)
+            self.r_vcalls_spent += ceil(args['duration'] / 60) * R_INC_CALL
+        else:
+            self.h_vcalls_counter += 1
+            self.h_vcalls_duration += ceil(args['duration'] / 60)
+            self.h_vcalls_spent += 0
+
+    def outgoing_call(self, args):
+        global OUT_HOME_CALL_PRICE_PER_MINUTE
+        global OUT_ROAMING_CALL_PRICE_PER_MINUTE
+        global OUT_CALL_NO_TARIFF_SEC
+        print(args['duration'])
+        time_spent = int(ceil(args['duration'] / 60)) if args['duration'] >= OUT_CALL_NO_TARIFF_SEC else 0
+        if self.roaming:
+            self.r_icalls_counter += 1
+            self.r_icalls_duration += time_spent
+            self.r_icalls_spent += time_spent * OUT_ROAMING_CALL_PRICE_PER_MINUTE
+        else:
+            self.h_icalls_counter += 1
+            self.h_icalls_duration += time_spent
+            self.h_icalls_spent += time_spent * OUT_HOME_CALL_PRICE_PER_MINUTE
+
 
     def __str__(self):
         pass
 
 
-class Manager:
+class Server:
     def __init__(self):
         # key = date, value = [(time1, (func1, **args1)), (time2, (func2, **args2)), ...]
         self.actions = dict()
@@ -170,23 +195,25 @@ class Manager:
             temp += datetime.timedelta(days = 1)
         return ans
 
-    def run(self):
+    def start(self):
         while True:
             emulator = Emulator()
             self.read(emulator)
             date1, date2 = None, None
             while date1 is None:
-                date1 = self.to_date(input("Enter date1(d.m.y): "))
+                print("Enter date1(d.m.y):")
+                date1 = self.to_date(input())
             while date2 is None:
-                date2 = self.to_date(input("Enter date2(d.m.y): "))
+                print("Enter date2(d.m.y):")
+                date2 = self.to_date(input())
             if date1 > date2:
                 print("Error! date1 > date2.")
                 continue
             date_list = self.range(date1, date2)
-            print(self.actions)
+            # print(self.actions)
             for date in date_list:
                 if date in self.actions.keys():
-                    self.actions[date] = sorted(self.actions[date], key = lambda x: self.time_to_comparable(x[0]))
+                    self.actions[date] = sorted(self.actions[date], key=lambda x: self.time_to_comparable(x[0]))
                     for action in self.actions[date]:
                         func = action[1][0]
                         args = action[1][1]
@@ -194,5 +221,5 @@ class Manager:
             print("\n\n\n")
 
 
-a = Manager()
-a.run()
+a = Server()
+a.start()
