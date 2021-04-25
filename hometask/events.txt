@@ -1,0 +1,8 @@
+deposit 100 24.04.21 12:00:00
+enter_roaming 25.04.21 18:00:34
+internet 570 25.04.21 18:00:35
+incoming_call +723423424234 74 25.04.21 18:00:36
+outgoing_call +723423424234 3600 25.04.21 19:00:37
+incoming_message +79999999999 Yo wassup brother 26.04.21 21:00:00
+outgoing_message +77777777777 Nice number! 26.04.21 21:00:01
+exit_roaming 27.04.21 23:00:00
